@@ -13,7 +13,6 @@ const ProblemDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-  const socket = getSocket();
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -32,45 +31,50 @@ const ProblemDetail = () => {
   
     fetchProblem();
 
-    const socket = getSocket();
-    // Join the problem room for real-time updates
+    // Initialize socket connection and join room
+    const currentSocket = getSocket();
     joinProblemRoom(id);
 
-    // Listen for real-time updates
-    socket.on('solution_received', (newSolution) => {
-      console.log('New solution received:', newSolution);
-      setProblem((prevProblem) => ({
-        ...prevProblem,
-        solutions: [...prevProblem.solutions, newSolution]
-      }));
-    });
+    // Set up event listeners
+    const setupListeners = () => {
+      currentSocket.on('solution_received', (newSolution) => {
+        console.log('New solution received:', newSolution);
+        setProblem((prevProblem) => ({
+          ...prevProblem,
+          solutions: [...prevProblem.solutions, newSolution]
+        }));
+      });
 
-    socket.on('vote_updated', ({ solutionId, votes }) => {
-      setProblem((prevProblem) => ({
-        ...prevProblem,
-        solutions: prevProblem.solutions.map(sol => 
-          sol._id === solutionId ? { ...sol, votes } : sol
-        )
-      }));
-    });
+      currentSocket.on('vote_updated', ({ solutionId, votes }) => {
+        setProblem((prevProblem) => ({
+          ...prevProblem,
+          solutions: prevProblem.solutions.map(sol => 
+            sol._id === solutionId ? { ...sol, votes } : sol
+          )
+        }));
+      });
 
-    socket.on('acceptance_updated', ({ solutionId }) => {
-      setProblem((prevProblem) => ({
-        ...prevProblem,
-        solutions: prevProblem.solutions.map(sol => 
-          sol._id === solutionId 
-            ? { ...sol, isAccepted: true } 
-            : { ...sol, isAccepted: false }
-        )
-      }));
-    });
-
-    return () => {
-      socket.off('solution_received');
-      socket.off('vote_updated');
-      socket.off('acceptance_updated');
+      currentSocket.on('acceptance_updated', ({ solutionId }) => {
+        setProblem((prevProblem) => ({
+          ...prevProblem,
+          solutions: prevProblem.solutions.map(sol => 
+            sol._id === solutionId 
+              ? { ...sol, isAccepted: true } 
+              : { ...sol, isAccepted: false }
+          )
+        }));
+      });
     };
-  }, [id]);
+
+    setupListeners();
+
+    // Cleanup function
+    return () => {
+      currentSocket.off('solution_received');
+      currentSocket.off('vote_updated');
+      currentSocket.off('acceptance_updated');
+    };
+  }, [id]); // Only re-run if id changes
 
   const handleSubmitSolution = async (e) => {
     e.preventDefault();

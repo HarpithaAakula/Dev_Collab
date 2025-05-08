@@ -56,10 +56,14 @@ const ChatBox = ({ problemId }) => {
       );
       
       setNewMessage('');
+      setError(null); // Clear any existing error when message is sent successfully
       // The new message will be added via socket event
     } catch (error) {
       console.error('Error sending message:', error);
-      setError('Failed to send message');
+      // Only set error if the message wasn't sent through socket
+      if (!messages.some(msg => msg.content === newMessage)) {
+        setError('Failed to send message');
+      }
     }
   };
 

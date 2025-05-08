@@ -1,8 +1,13 @@
 import { io } from 'socket.io-client';
 
 let socket;
+let currentRoom = null;
 
 export const initSocket = () => {
+  if (socket?.connected) {
+    return socket;
+  }
+
   // Add error handling and connection event logging
   socket = io('http://localhost:5000', {
     withCredentials: true,
@@ -31,14 +36,30 @@ export const getSocket = () => {
 
 export const disconnectSocket = () => {
   if (socket) {
+    if (currentRoom) {
+      socket.emit('leave_problem', { problemId: currentRoom });
+      currentRoom = null;
+    }
     socket.disconnect();
   }
 };
 
 export const joinProblemRoom = (problemId) => {
   const currentSocket = getSocket();
+  
+  // If we're already in this room, don't join again
+  if (currentRoom === problemId) {
+    return;
+  }
+  
+  // If we're in a different room, leave it first
+  if (currentRoom) {
+    currentSocket.emit('leave_problem', { problemId: currentRoom });
+  }
+  
   console.log(`Joining problem room: ${problemId}`);
   currentSocket.emit('join_problem', { problemId });
+  currentRoom = problemId;
 };
 
 // Real-time code collaboration
