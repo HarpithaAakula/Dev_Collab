@@ -4,7 +4,7 @@ import axios from 'axios';
 import ChatBox from '../components/Chat/ChatBox';
 import { getSocket, joinProblemRoom, sendNewSolution, sendSolutionVote, sendSolutionAccepted } from '../services/socketService';
 import { Link } from 'react-router-dom';
-
+import './ProblemDetail.css';
 
 const ProblemDetail = () => {
   const { id } = useParams();
@@ -158,74 +158,103 @@ const ProblemDetail = () => {
     }
   };
 
+  const renderMedia = (media) => {
+    if (!media || (!media.images?.length && !media.videos?.length)) return null;
+    return (
+      <div className="media-section">
+        <div className="media-grid">
+          {media.images?.map((imageUrl, index) => (
+            <div key={`image-${index}`} className="media-item">
+              <img
+                src={imageUrl}
+                alt={`Problem image ${index + 1}`}
+                className="media-image"
+                onClick={() => window.open(imageUrl, '_blank')}
+              />
+            </div>
+          ))}
+          {media.videos?.map((videoUrl, index) => (
+            <div key={`video-${index}`} className="media-item">
+              <video
+                src={videoUrl}
+                controls
+                className="media-video"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <div className="text-center p-5">Loading...</div>;
   if (error) return <div className="text-center p-5 text-red-500">{error}</div>;
   if (!problem) return <div className="text-center p-5">Problem not found</div>;
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h1 className="text-2xl font-bold mb-4">{problem.title}</h1>
-        <p className="text-gray-700 mb-4">{problem.description}</p>
-        <div className="flex flex-wrap gap-2 mb-4">
+    <div className="problem-detail-container">
+      <div className="problem-card">
+        <h1 className="problem-title">{problem.title}</h1>
+        <p className="problem-description">{problem.description}</p>
+        {renderMedia(problem.media)}
+        <div className="problem-tags">
           {problem.tags.map((tag, index) => (
-            <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+            <span key={index} className="problem-tag">
               {tag}
             </span>
           ))}
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="problem-meta">
           Posted by {problem.user.name} on {new Date(problem.createdAt).toLocaleDateString()}
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Solutions ({problem.solutions.length})</h2>
+      <div className="solutions-card">
+        <h2 className="solutions-title">Solutions ({problem.solutions.length})</h2>
         {problem.solutions.length === 0 ? (
-          <p className="text-gray-500">No solutions yet. Be the first to provide a solution!</p>
+          <p className="solutions-empty">No solutions yet. Be the first to provide a solution!</p>
         ) : (
-          <div className="space-y-4">
+          <div className="solutions-list">
             {problem.solutions.map((sol) => (
               <div 
                 key={sol._id} 
-                className={`p-4 border rounded-lg ${sol.isAccepted ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}
+                className={`solution-item ${sol.isAccepted ? 'solution-accepted' : ''}`}
               >
-                <p className="mb-2">{sol.content}</p>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-500">
+                <p className="solution-content">{sol.content}</p>
+                {renderMedia(sol.media)}
+                <div className="solution-meta-row">
+                  <div className="solution-meta">
                     By {sol.user.name} on {new Date(sol.createdAt).toLocaleDateString()}
                   </div>
                   <div>
-                  <Link to={`/collaborate/${problem._id}`} className="collaborate-button">
+                    <Link to={`/collaborate/${problem._id}`} className="collaborate-button">
                       Collaborate
                     </Link>
-                    </div>
-                  <div className="flex items-center gap-2">
-                  
-                    <span className="text-gray-700">Votes: {sol.votes}</span>
-                    
+                  </div>
+                  <div className="solution-actions">
+                    <span className="solution-votes">Votes: {sol.votes}</span>
                     <button 
                       onClick={() => handleVote(sol._id, 'upvote')}
-                      className="bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200"
+                      className="vote-btn upvote"
                     >
                       👍
                     </button>
                     <button 
                       onClick={() => handleVote(sol._id, 'downvote')}
-                      className="bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200"
+                      className="vote-btn downvote"
                     >
                       👎
                     </button>
                     {userInfo && problem.user._id === userInfo._id && !sol.isAccepted && (
                       <button 
                         onClick={() => handleAccept(sol._id)}
-                        className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+                        className="accept-btn"
                       >
                         Accept
                       </button>
                     )}
                     {sol.isAccepted && (
-                      <span className="bg-green-500 text-white px-2 py-1 rounded">
+                      <span className="accepted-label">
                         ✓ Accepted
                       </span>
                     )}
@@ -238,27 +267,27 @@ const ProblemDetail = () => {
       </div>
 
       {userInfo ? (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Add Your Solution</h2>
+        <div className="add-solution-card">
+          <h2 className="add-solution-title">Add Your Solution</h2>
           <form onSubmit={handleSubmitSolution}>
             <textarea
               value={solution}
               onChange={(e) => setSolution(e.target.value)}
-              className="w-full p-2 border rounded-lg mb-4 min-h-[120px]"
+              className="add-solution-textarea"
               placeholder="Share your solution..."
               required
             ></textarea>
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+              className="add-solution-btn"
             >
               Submit Solution
             </button>
           </form>
         </div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-center">
-          Please <a href="/login" className="text-blue-500 hover:underline">login</a> to submit a solution.
+        <div className="login-reminder">
+          Please <a href="/login" className="login-link">login</a> to submit a solution.
         </div>
       )}
 

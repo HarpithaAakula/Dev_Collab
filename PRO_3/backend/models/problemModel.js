@@ -19,6 +19,10 @@ const solutionSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    media: {
+      images: [String],
+      videos: [String]
+    }
   },
   {
     timestamps: true,
@@ -57,6 +61,10 @@ const problemSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    media: {
+      images: [String],
+      videos: [String]
+    }
   },
   {
     timestamps: true,

@@ -7,11 +7,28 @@ const createProblem = async (req, res) => {
   try {
     const { title, description, tags } = req.body;
     
+    // Handle media files
+    const media = {
+      images: [],
+      videos: []
+    };
+
+    if (req.files) {
+      req.files.forEach(file => {
+        if (file.mimetype.startsWith('image/')) {
+          media.images.push(file.path);
+        } else if (file.mimetype.startsWith('video/')) {
+          media.videos.push(file.path);
+        }
+      });
+    }
+    
     const problem = await Problem.create({
       title,
       description,
       tags: tags.split(',').map(tag => tag.trim()),
       user: req.user._id,
+      media
     });
 
     if (problem) {
@@ -103,9 +120,26 @@ const addSolution = async (req, res) => {
       return res.status(404).json({ message: 'Problem not found' });
     }
     
+    // Handle media files for solution
+    const media = {
+      images: [],
+      videos: []
+    };
+
+    if (req.files) {
+      req.files.forEach(file => {
+        if (file.mimetype.startsWith('image/')) {
+          media.images.push(file.path);
+        } else if (file.mimetype.startsWith('video/')) {
+          media.videos.push(file.path);
+        }
+      });
+    }
+    
     const solution = {
       content,
       user: req.user._id,
+      media
     };
     
     problem.solutions.push(solution);
