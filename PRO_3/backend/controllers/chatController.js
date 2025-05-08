@@ -55,8 +55,15 @@ const sendMessage = asyncHandler(async (req, res) => {
   });
 
   // Emit to socket.io
-  const io = req.app.get('io');
-  io.to(`problem_${problemId}`).emit('new_message', message);
+  try {
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`problem_${problemId}`).emit('new_message', message);
+    }
+  } catch (error) {
+    console.error('Socket.io error:', error);
+    // Continue with the response even if socket emission fails
+  }
 
   res.status(201).json(message);
 });

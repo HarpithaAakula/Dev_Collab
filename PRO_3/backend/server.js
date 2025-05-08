@@ -31,11 +31,11 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/problems', require('./routes/problemRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 
-
 // Socket.io connection
 socketController(io);
 
-
+// Make io instance available to routes
+app.set('io', io);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
