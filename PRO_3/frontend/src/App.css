@@ -536,3 +536,58 @@
   justify-content: center;
   align-items: center;
 }
+
+/* Layout.css */
+.nav-notification-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 15px;
+}
+
+/* Full notification list styles */
+.notification-item-full {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+.notification-item-full:hover {
+  background-color: #f9f9f9;
+}
+
+.notification-item-full.unread {
+  background-color: #f0f7ff;
+}
+
+.notification-item-full.unread:hover {
+  background-color: #e6f0ff;
+}
+
+.notification-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.notification-message {
+  margin-bottom: 5px;
+  font-size: 1rem;
+}
+
+.action-buttons {
+  margin-top: 10px;
+}
+
+@media (min-width: 768px) {
+  .action-buttons {
+    margin-top: 0;
+  }
+}
+
+main {
+  min-height: calc(100vh - 170px);
+}
+
+footer {
+  margin-top: auto;
+}

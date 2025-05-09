@@ -1,74 +1,75 @@
-const Message = require('../models/chatModel');
-const User = require('../models/userModel');
+const Chat = require('../models/chatModel');
 const Problem = require('../models/problemModel');
-const asyncHandler = require('express-async-handler');
+const { createNotification } = require('./notificationController');
 
-// @desc    Get all messages for a specific problem
-// @route   GET /api/chat/:problemId
-// @access  Private
-const getMessages = asyncHandler(async (req, res) => {
-  const { problemId } = req.params;
-
-  // Verify problem exists
-  const problemExists = await Problem.findById(problemId);
-  if (!problemExists) {
-    res.status(404);
-    throw new Error('Problem not found');
-  }
-
-  const messages = await Message.find({ problemId })
-    .sort({ createdAt: 1 });
-
-  res.json(messages);
-});
-
-// @desc    Send a new message
+// @desc    Send a chat message
 // @route   POST /api/chat/:problemId
 // @access  Private
-const sendMessage = asyncHandler(async (req, res) => {
-  const { problemId } = req.params;
-  const { content } = req.body;
-
-  if (!content || content.trim() === '') {
-    res.status(400);
-    throw new Error('Message content is required');
-  }
-
-  // Verify problem exists
-  const problemExists = await Problem.findById(problemId);
-  if (!problemExists) {
-    res.status(404);
-    throw new Error('Problem not found');
-  }
-
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
-  }
-
-  const message = await Message.create({
-    problemId,
-    user: req.user._id,
-    userName: user.name,
-    content
-  });
-
-  // Emit to socket.io
+const sendMessage = async (req, res) => {
   try {
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`problem_${problemId}`).emit('new_message', message);
+    const { content } = req.body;
+    const problemId = req.params.problemId;
+    
+    // Verify problem exists
+    const problem = await Problem.findById(problemId);
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
     }
+    
+    // Create the message
+    const message = await Chat.create({
+      problem: problemId,
+      sender: req.user._id,
+      content,
+    });
+    
+    await message.populate('sender', 'name email');
+    
+    // Emit to socket room for real-time updates
+    req.io?.to(`problem_${problemId}`).emit('new_chat_message', message);
+    
+    // Create notification if message is for problem owner
+    if (problem.user.toString() !== req.user._id.toString()) {
+      await createNotification({
+        recipient: problem.user,
+        sender: req.user._id,
+        problemId: problem._id,
+        type: 'new_message',
+        message: `${req.user.name} sent a message on your problem: ${problem.title}`,
+        relatedItemId: message._id
+      });
+      
+      // Emit real-time notification
+      req.io?.to(`user_${problem.user.toString()}`).emit('notification', {
+        type: 'new_message',
+        message: `${req.user.name} sent a message regarding your problem`,
+        problemId: problem._id,
+        messageId: message._id
+      });
+    }
+    
+    res.status(201).json(message);
   } catch (error) {
-    console.error('Socket.io error:', error);
-    // Continue with the response even if socket emission fails
+    res.status(500).json({ message: error.message });
   }
+};
 
-  res.status(201).json(message);
-});
+// @desc    Get chat messages for a problem
+// @route   GET /api/chat/:problemId
+// @access  Private
+const getMessages = async (req, res) => {
+  try {
+    const messages = await Chat.find({ problem: req.params.problemId })
+      .populate('sender', 'name email')
+      .sort({ createdAt: 1 });
+    
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
+  sendMessage,
   getMessages,
-  sendMessage
 };

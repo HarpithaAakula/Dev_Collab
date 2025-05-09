@@ -1,4 +1,6 @@
+
 const Problem = require('../models/problemModel');
+const { createNotification } = require('./notificationController');
 
 // @desc    Create a new problem
 // @route   POST /api/problems
@@ -151,6 +153,24 @@ const addSolution = async (req, res) => {
     
     await problem.save();
     
+    // Create notification for problem owner
+    await createNotification({
+      recipient: problem.user,
+      sender: req.user._id,
+      problemId: problem._id,
+      type: 'new_solution',
+      message: `${req.user.name} submitted a solution to your problem: ${problem.title}`,
+      relatedItemId: problem.solutions[problem.solutions.length - 1]._id
+    });
+    
+    // Emit socket event for real-time notification (handled in server.js)
+    req.io?.to(`user_${problem.user.toString()}`).emit('notification', {
+      type: 'new_solution',
+      message: `${req.user.name} submitted a solution to your problem: ${problem.title}`,
+      problemId: problem._id,
+      solutionId: problem.solutions[problem.solutions.length - 1]._id
+    });
+    
     const updatedProblem = await Problem.findById(req.params.id)
       .populate('user', 'name email')
       .populate('solutions.user', 'name email');
@@ -161,66 +181,106 @@ const addSolution = async (req, res) => {
   }
 };
 
-
 // @desc    Upvote or downvote a solution
 // @route   POST /api/problems/:problemId/solutions/:solutionId/vote
 // @access  Private
 const voteSolution = async (req, res) => {
-    const { voteType } = req.body; // 'upvote' or 'downvote'
-  
-    try {
-      const problem = await Problem.findById(req.params.problemId);
-      if (!problem) {
-        return res.status(404).json({ message: 'Problem not found' });
-      }
-  
-      const solution = problem.solutions.id(req.params.solutionId);
-      if (!solution) {
-        return res.status(404).json({ message: 'Solution not found' });
-      }
-  
-      if (voteType === 'upvote') {
-        solution.votes += 1;
-      } else if (voteType === 'downvote') {
-        solution.votes -= 1;
-      }
-  
-      await problem.save();
-      res.status(200).json({ message: 'Vote recorded successfully', solution });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+  const { voteType } = req.body; // 'upvote' or 'downvote'
+
+  try {
+    const problem = await Problem.findById(req.params.problemId);
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
     }
-  };
-  
-  // @desc    Accept a solution
-  // @route   POST /api/problems/:problemId/solutions/:solutionId/accept
-  // @access  Private
-  const acceptSolution = async (req, res) => {
-    try {
-      const problem = await Problem.findById(req.params.problemId);
-      if (!problem) {
-        return res.status(404).json({ message: 'Problem not found' });
-      }
-  
-      const solution = problem.solutions.id(req.params.solutionId);
-      if (!solution) {
-        return res.status(404).json({ message: 'Solution not found' });
-      }
-  
-      if (problem.user.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'You are not authorized to accept a solution for this problem' });
-      }
-  
-      // Mark all other solutions as not accepted
-      problem.solutions.forEach((sol) => (sol.isAccepted = false));
-      solution.isAccepted = true;
-  
-      await problem.save();
-      res.status(200).json({ message: 'Solution accepted successfully', solution });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+
+    const solution = problem.solutions.id(req.params.solutionId);
+    if (!solution) {
+      return res.status(404).json({ message: 'Solution not found' });
     }
-  };
+
+    if (voteType === 'upvote') {
+      solution.votes += 1;
+    } else if (voteType === 'downvote') {
+      solution.votes -= 1;
+    }
+
+    await problem.save();
+    
+    // Notify solution creator of vote
+    await createNotification({
+      recipient: solution.user,
+      sender: req.user._id,
+      problemId: problem._id,
+      type: 'solution_voted',
+      message: `${req.user.name} ${voteType === 'upvote' ? 'upvoted' : 'downvoted'} your solution for problem: ${problem.title}`,
+      relatedItemId: solution._id
+    });
+    
+    // Real-time notification
+    req.io?.to(`user_${solution.user.toString()}`).emit('notification', {
+      type: 'solution_voted',
+      message: `${req.user.name} ${voteType === 'upvote' ? 'upvoted' : 'downvoted'} your solution`,
+      problemId: problem._id,
+      solutionId: solution._id
+    });
+    
+    res.status(200).json({ message: 'Vote recorded successfully', solution });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Accept a solution
+// @route   POST /api/problems/:problemId/solutions/:solutionId/accept
+// @access  Private
+const acceptSolution = async (req, res) => {
+  try {
+    const problem = await Problem.findById(req.params.problemId);
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
+    }
+
+    const solution = problem.solutions.id(req.params.solutionId);
+    if (!solution) {
+      return res.status(404).json({ message: 'Solution not found' });
+    }
+
+    if (problem.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You are not authorized to accept a solution for this problem' });
+    }
+
+    // Mark all other solutions as not accepted
+    problem.solutions.forEach((sol) => (sol.isAccepted = false));
+    solution.isAccepted = true;
+    
+    // Update problem status to 'solved'
+    problem.status = 'solved';
+
+    await problem.save();
+    
+    // Create notification for solution creator
+    await createNotification({
+      recipient: solution.user,
+      sender: req.user._id,
+      problemId: problem._id,
+      type: 'solution_accepted',
+      message: `Your solution for problem "${problem.title}" was accepted!`,
+      relatedItemId: solution._id
+    });
+    
+    // Real-time notification
+    req.io?.to(`user_${solution.user.toString()}`).emit('notification', {
+      type: 'solution_accepted',
+      message: `Your solution for problem "${problem.title}" was accepted!`,
+      problemId: problem._id,
+      solutionId: solution._id
+    });
+    
+    res.status(200).json({ message: 'Solution accepted successfully', solution });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   createProblem,
@@ -231,4 +291,3 @@ module.exports = {
   voteSolution,
   acceptSolution,
 };
-

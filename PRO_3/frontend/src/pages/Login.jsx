@@ -1,70 +1,91 @@
-import { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { Container, Form, Button, Alert, Card } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext'; // Import AuthContext
+import { AuthContext } from '../context/AuthContext';
+import { initSocket } from '../services/socketService';
 
-function Login() {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext); // Use the login function from AuthContext
+  const { login, userInfo } = useContext(AuthContext);
+
+  useEffect(() => {
+    // Redirect to home if already logged in
+    if (userInfo) {
+      navigate('/');
+    }
+  }, [userInfo, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/users/login', {
+      const { data } = await axios.post('http://localhost:5000/api/users/login', {
         email,
         password,
       });
 
-      // Save user info to localStorage
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
+      // Save user info
+      localStorage.setItem('userInfo', JSON.stringify(data));
 
       // Update AuthContext
-      login(response.data);
+      login(data);
 
-      // Navigate to Dashboard
+      // Initialize WebSocket connection
+      initSocket();
+
+      // Navigate to dashboard/home
       navigate('/dashboard');
-    } catch (error) {
-      setError(error.response?.data?.message || 'Login failed. Please try again.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <h2>Login</h2>
-      {error && <div className="error">{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
+      <Card style={{ width: '100%', maxWidth: '400px' }} className="p-4">
+        <h2 className="text-center mb-4">Log In</h2>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3">
+            <Form.Label>Email</Form.Label>
+            <Form.Control
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Password</Form.Label>
+            <Form.Control
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+            />
+          </Form.Group>
+          <Button type="submit" disabled={loading} className="w-100">
+            {loading ? 'Logging in...' : 'Log In'}
+          </Button>
+        </Form>
+        <div className="text-center mt-3">
+          Don't have an account? <Link to="/register">Register</Link>
         </div>
-        <div className="form-group">
-          <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Login</button>
-      </form>
-      <p class="space">
-        Don't have an account? <a href="/register">Register</a>
-      </p>
-    </div>
+      </Card>
+    </Container>
   );
-}
+};
 
 export default Login;

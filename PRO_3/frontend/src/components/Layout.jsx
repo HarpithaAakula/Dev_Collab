@@ -1,60 +1,67 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
+import { Link, Outlet } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import NotificationIcon from './notifications/NotificationIcon';
+import './Layout.css';
 
-function Layout() {
+const Layout = () => {
   const { userInfo, logout } = useContext(AuthContext);
-  const [isLoggedIn,setIsLoggedIn]=useState(false);
-  
-  useEffect(() => {
-    // Update the isLoggedIn state based on userInfo
-    setIsLoggedIn(!!userInfo);
-  }, [userInfo]);
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
   };
-  
+
   return (
-    <div className="app-container min-h-screen flex flex-col">
-      <header className="bg-white shadow-md">
-        <nav className="container mx-auto p-4 flex justify-between items-center">
-          <div className="logo font-bold text-xl">DevCollab</div>
-          <ul className="flex space-x-6">
-          <li><Link to="/aboutus" className="hover:text-blue-500">Home</Link></li>
-            {isLoggedIn ? (
-              <>
-                <li><Link to="/problems" className="hover:text-blue-500">Problems</Link></li>
-                <li><Link to="/submit-problem" className="hover:text-blue-500">Submit Problem</Link></li>
-                <li><Link to="/dashboard" className="hover:text-blue-500">Dashboard</Link></li>
-                <li>
-                  <button 
-                    onClick={handleLogout}
-                    className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                </li>
-              </>
-            ) : (
-              <>
-                
-                <li><Link to="/login" className="hover:text-blue-500">Login</Link></li>
-                <li><Link to="/register" className="hover:text-blue-500">Register</Link></li>
-              </>
-            )}
-          </ul>
-        </nav>
-      </header>
-      <main className="container mx-auto p-4 flex-grow">
+    <>
+      <Navbar bg="light" expand="lg" className="mb-4">
+        <Container>
+          <Navbar.Brand as={Link} to="/">Problem Solver Hub</Navbar.Brand>
+          <Navbar.Toggle aria-controls="basic-navbar-nav" />
+          <Navbar.Collapse id="basic-navbar-nav">
+            <Nav className="me-auto">
+              <Nav.Link as={Link} to="/">Home</Nav.Link>
+              <Nav.Link as={Link} to="/problems">Problems</Nav.Link>
+              <Nav.Link as={Link} to="/aboutus">About Us</Nav.Link>
+            </Nav>
+            <Nav>
+              {userInfo ? (
+                <>
+                  {/* Notification Icon */}
+                  <div className="nav-notification-icon">
+                    <NotificationIcon />
+                  </div>
+                  
+                  <NavDropdown title={userInfo.name} id="basic-nav-dropdown" align="end">
+                    <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to="/submit-problem">Submit Problem</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to="/notifications">Notifications</NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
+                  </NavDropdown>
+                </>
+              ) : (
+                <>
+                  <Nav.Link as={Link} to="/login">Login</Nav.Link>
+                  <Nav.Link as={Link} to="/register">Register</Nav.Link>
+                </>
+              )}
+            </Nav>
+          </Navbar.Collapse>
+        </Container>
+      </Navbar>
+      
+      <main>
         <Outlet />
       </main>
-      <footer className="bg-gray-100 p-4 text-center">
-        <p>&copy; {new Date().getFullYear()} DevCollab Platform</p>
+      
+      <footer className="text-center py-4 mt-4 bg-light">
+        <Container>
+          <p>&copy; {new Date().getFullYear()} Problem Solver Hub. All rights reserved.</p>
+        </Container>
       </footer>
-    </div>
+    </>
   );
-}
+};
 
 export default Layout;

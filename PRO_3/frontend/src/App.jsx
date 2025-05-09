@@ -11,7 +11,9 @@ import Dashboard from './pages/Dashboard';
 import ProblemList from './pages/ProblemList';
 import ProblemDetail from './pages/ProblemDetail';
 import SubmitProblem from './pages/SubmitProblem';
+import Notifications from './pages/Notifications';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/notificationContext';
 import { initSocket, disconnectSocket } from './services/socketService';
 import CollaborationPage from './pages/CollaborationPage'
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -20,7 +22,11 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 function App() {
   useEffect(() => {
     // Initialize socket connection when the app mounts
-    initSocket();
+    const userInfo = localStorage.getItem('userInfo');
+    if (userInfo) {
+      const { token } = JSON.parse(userInfo);
+      initSocket(token);
+    }
 
     // Clean up socket connection when the app unmounts
     return () => {
@@ -30,21 +36,24 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="/aboutus" element={<Aboutus />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/problems" element={<ProblemList />} />
-            <Route path="/collaborate/:problemId" element={<CollaborationPage />} />
-            <Route path="/problems/:id" element={<ProblemDetail />} />
-            <Route path="/submit-problem" element={<SubmitProblem />} />
-          </Route>
-        </Routes>
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="/aboutus" element={<Aboutus />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/problems" element={<ProblemList />} />
+              <Route path="/collaborate/:problemId" element={<CollaborationPage />} />
+              <Route path="/problems/:id" element={<ProblemDetail />} />
+              <Route path="/submit-problem" element={<SubmitProblem />} />
+              <Route path="/notifications" element={<Notifications />} />
+            </Route>
+          </Routes>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
