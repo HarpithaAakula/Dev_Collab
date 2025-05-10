@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getSocket, joinProblemRoom } from '../../services/socketService.js';
 
@@ -7,46 +7,89 @@ const ChatBox = ({ problemId }) => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+  const messagesEndRef = useRef(null);
+  
+  // Get user info from localStorage
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const token = userInfo?.token;
+  
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
+    let isMounted = true;
+    
+    // Get socket instance
+    const socket = getSocket();
+    console.log('Socket instance:', socket);
+    
+    // Fetch messages when component mounts
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/chat/${problemId}`, {
-          headers: userInfo ? { Authorization: `Bearer ${userInfo.token}` } : {}
+        const { data } = await axios.get(`http://localhost:5000/api/chat/${problemId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
-        setMessages(response.data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-        setError('Failed to load messages');
-        setLoading(false);
+        
+        if (isMounted) {
+          setMessages(data);
+          console.log('Fetched messages:', data);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching messages:', err);
+          setError('Failed to load messages');
+          setLoading(false);
+        }
       }
     };
 
     if (problemId) {
       fetchMessages();
+      // Join the problem room
+      joinProblemRoom(problemId);
     }
-
-    // Join the problem chat room
-    const socket = getSocket();
-    joinProblemRoom(problemId);
-
-    // Listen for new messages
-    socket.on('new_message', (message) => {
+      
+    const handleNewMessage = (message) => {
+      console.log('Received new message via socket:', message);
       setMessages((prevMessages) => [...prevMessages, message]);
-    });
-
-    return () => {
-      socket.off('new_message');
     };
-  }, [problemId, userInfo]);
+    socket.on('new_chat_message', handleNewMessage);
+
+    // Attach test listener for built-in event
+    const handleConnect = () => {
+      console.log('Socket connected event received in ChatBox:', socket.id);
+    };
+    socket.on('connect', handleConnect);
+
+    const handleTestEvent = (data) => {
+      console.log('Test event received:', data);
+    };
+    socket.on('test_event', handleTestEvent);
+    
+    // Clean up on unmount
+    return () => {
+      isMounted = false;
+      socket.off('new_chat_message', handleNewMessage);
+      socket.off('connect', handleConnect);
+      socket.off('test_event', handleTestEvent);
+    };
+  }, [problemId, token]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !userInfo) return;
 
     try {
+      const socket = getSocket();
+      
+      // Send message via REST API
       const response = await axios.post(
         `http://localhost:5000/api/chat/${problemId}`,
         { content: newMessage },
@@ -55,19 +98,26 @@ const ChatBox = ({ problemId }) => {
         }
       );
       
+      // Also emit via socket for real-time updates
+      socket.emit('chat_message', {
+        problemId,
+        message: newMessage,
+        userId: userInfo._id,
+        userName: userInfo.name
+      });
+      
       setNewMessage('');
-      setError(null); // Clear any existing error when message is sent successfully
+      setError(null);
       // The new message will be added via socket event
     } catch (error) {
       console.error('Error sending message:', error);
-      // Only set error if the message wasn't sent through socket
       if (!messages.some(msg => msg.content === newMessage)) {
         setError('Failed to send message');
       }
     }
   };
 
-  if (!userInfo) {
+  if (!userInfo?.token) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-center mt-6">
         Please <a href="/login" className="text-blue-500 hover:underline">login</a> to join the discussion.
@@ -93,8 +143,8 @@ const ChatBox = ({ problemId }) => {
                 key={message._id}
                 className={`p-2 rounded-lg ${
                   message.user === userInfo._id 
-                    ? 'bg-blue-100 ml-auto max-w-[75%]' 
-                    : 'bg-gray-100 max-w-[75%]'
+                    ? 'bg-blue-100 ml-auto max-w-3/4' 
+                    : 'bg-gray-100 max-w-3/4'
                 }`}
               >
                 <p className="text-sm font-semibold">{message.userName}</p>
@@ -104,6 +154,7 @@ const ChatBox = ({ problemId }) => {
                 </p>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -115,7 +166,6 @@ const ChatBox = ({ problemId }) => {
           onChange={(e) => setNewMessage(e.target.value)}
           className="flex-grow p-2 border rounded"
           placeholder="Type your message..."
-          // value style="margin-bottom: 10px;"
         />
         <button
           type="submit"

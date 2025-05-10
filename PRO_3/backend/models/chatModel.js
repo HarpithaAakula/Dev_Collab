@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const messageSchema = mongoose.Schema(
   {
-    problemId: {
+    problem: {  // Changed from problemId to problem to match chatController.js
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: 'Problem'

@@ -27,6 +27,9 @@ function App() {
       const { token } = JSON.parse(userInfo);
       initSocket(token);
     }
+    else{
+      initSocket();
+    }
 
     // Clean up socket connection when the app unmounts
     return () => {

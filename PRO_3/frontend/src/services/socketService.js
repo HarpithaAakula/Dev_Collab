@@ -8,12 +8,13 @@ export const initSocket = (token) => {
     return socket;
   }
 
-  // Add auth token to connection and error handling
+  // Always connect to the backend using the full URL
   socket = io('http://localhost:5000', {
     withCredentials: true,
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    // Force websocket transport for reliability
     auth: {
       token // Include the auth token for socket authentication
     }
@@ -34,9 +35,9 @@ export const getSocket = () => {
   if (!socket) {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
     if (userInfo?.token) {
-      return initSocket(userInfo.token);
+      socket= initSocket(userInfo.token);
     }
-    return null;
+   
   }
   return socket;
 };
