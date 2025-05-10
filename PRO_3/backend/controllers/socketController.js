@@ -75,36 +75,19 @@ module.exports = (io) => {
       });
     });
 
-    // Chat messages
-    socket.on('chat_message', async ({ problemId, message, userId, userName }) => {
+    // Chat messages - Only relay messages, don't save them here
+    socket.on('chat_message', ({ problemId, message, messageId }) => {
       const roomName = getRoomName(problemId);
-      console.log('Socket server: emitting new_chat_message to', roomName, 'with message:', message);
-
-      if (!problemId || !userId || !userName || !message) {
-        console.error('chat_message: Missing required fields');
-        return;
-      }
-
-      try {
-        // Updated to use 'problem' instead of 'problemId' to match the schema
-        const savedMessage = await Chat.create({
+      console.log('Socket server: relaying message to', roomName);
+      
+      // We're not creating messages here anymore - just relaying the confirmed message
+      // from the REST API to all other clients
+      if (messageId) {
+        socket.to(roomName).emit('new_chat_message', {
+          _id: messageId,
           problem: problemId,
-          user: userId,
-          userName,
           content: message
         });
-
-        if (activeRooms.has(roomName)) {
-          const roomData = activeRooms.get(roomName);
-          roomData.chat.push(savedMessage);
-          if (roomData.chat.length > 100) {
-            roomData.chat.shift();
-          }
-        }
-
-        io.to(roomName).emit('new_chat_message', savedMessage);
-      } catch (err) {
-        console.error('Error saving chat message to DB:', err);
       }
     });
 

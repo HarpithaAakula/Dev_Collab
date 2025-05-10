@@ -58,7 +58,14 @@ const ChatBox = ({ problemId }) => {
       
     const handleNewMessage = (message) => {
       console.log('Received new message via socket:', message);
-      setMessages((prevMessages) => [...prevMessages, message]);
+      // Prevent duplicate messages
+      setMessages((prevMessages) => {
+        // Check if message already exists in the array
+        if (!prevMessages.some(msg => msg._id === message._id)) {
+          return [...prevMessages, message];
+        }
+        return prevMessages;
+      });
     };
     socket.on('new_chat_message', handleNewMessage);
 
@@ -89,7 +96,7 @@ const ChatBox = ({ problemId }) => {
     try {
       const socket = getSocket();
       
-      // Send message via REST API
+      // Send message via REST API only (not via socket directly)
       const response = await axios.post(
         `http://localhost:5000/api/chat/${problemId}`,
         { content: newMessage },
@@ -98,17 +105,21 @@ const ChatBox = ({ problemId }) => {
         }
       );
       
-      // Also emit via socket for real-time updates
+      // Get the created message from the response
+      const newMessageData = response.data;
+      
+      // Add the message to the UI immediately (don't wait for socket)
+      setMessages(prevMessages => [...prevMessages, newMessageData]);
+      
+      // Emit socket event ONLY to notify other clients
       socket.emit('chat_message', {
         problemId,
         message: newMessage,
-        userId: userInfo._id,
-        userName: userInfo.name
+        messageId: newMessageData._id
       });
       
       setNewMessage('');
       setError(null);
-      // The new message will be added via socket event
     } catch (error) {
       console.error('Error sending message:', error);
       if (!messages.some(msg => msg.content === newMessage)) {
