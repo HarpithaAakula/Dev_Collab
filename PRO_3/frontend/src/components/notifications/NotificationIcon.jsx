@@ -59,7 +59,9 @@ const NotificationIcon = () => {
           </div>
 
           <div className="notification-list">
-            {notifications.length === 0 ? (
+            {!notifications ? (
+              <div className="no-notifications">Loading...</div>
+            ) : notifications.length === 0 ? (
               <div className="no-notifications">No notifications</div>
             ) : (
               notifications.slice(0, 10).map((notification) => (
@@ -84,7 +86,7 @@ const NotificationIcon = () => {
             )}
           </div>
           
-          {notifications.length > 10 && (
+          {notifications && notifications.length > 10 && (
             <Link 
               to="/notifications" 
               className="view-all-notifications"
