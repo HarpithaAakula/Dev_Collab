@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useState, useContext } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 function Register() {
   const [name, setName] = useState('');
@@ -8,28 +8,29 @@ function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { register } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setIsLoading(false);
       return;
     }
     
     try {
-      const response = await axios.post('http://localhost:5000/api/users', {
-        name,
-        email,
-        password,
-      });
-      
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
+      await register(name, email, password);
       navigate('/dashboard');
     } catch (error) {
-      setError(error.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', error);
+      setError(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -46,6 +47,7 @@ function Register() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
         <div className="form-group">
@@ -56,6 +58,7 @@ function Register() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
         <div className="form-group">
@@ -66,6 +69,7 @@ function Register() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
         <div className="form-group">
@@ -76,12 +80,15 @@ function Register() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
-        <button class="reg" type="submit">Register</button>
+        <button className="reg" type="submit" disabled={isLoading}>
+          {isLoading ? 'Registering...' : 'Register'}
+        </button>
       </form>
-      <p class="regspace">
-        Already have an account? <a href="/login">Login</a>
+      <p className="regspace">
+        Already have an account? <Link to="/login">Login</Link>
       </p>
     </div>
   );

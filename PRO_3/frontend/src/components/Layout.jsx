@@ -1,15 +1,17 @@
 import React, { useContext } from 'react';
 import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import NotificationIcon from './notifications/NotificationIcon';
 import './Layout.css';
 
 const Layout = () => {
   const { userInfo, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
+    navigate('/login');
   };
 
   return (

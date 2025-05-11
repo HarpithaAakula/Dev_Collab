@@ -23,7 +23,12 @@ const io = socketio(server, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Specify the exact origin instead of using *
+  credentials: true, // Allow credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify the methods
+  allowedHeaders: ['Content-Type', 'Authorization'] // Specify the allowed headers
+}));
 app.use(express.json());
 
 // Routes
