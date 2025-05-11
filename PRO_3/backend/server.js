@@ -36,6 +36,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/problems', require('./routes/problemRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/gamification', require('./routes/gamificationRoutes'));
 
 // Socket.io connection
 socketController(io);

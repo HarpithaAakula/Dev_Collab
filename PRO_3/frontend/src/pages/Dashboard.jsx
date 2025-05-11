@@ -1,87 +1,121 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-// import img from './img/image1.jpg'
-import img1 from './img/down.png';
-function Dashboard() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+import React from 'react';
+import { Container, Row, Col, Card, ProgressBar } from 'react-bootstrap';
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import { useGamification } from '../context/GamificationContext';
+import UserBadgesList from '../components/gamification/UserBadgesList';
+import UserPointsDisplay from '../components/gamification/UserPointsDisplay';
+import { Link } from 'react-router-dom';
+import { FaTrophy, FaMedal, FaAward } from 'react-icons/fa';
 
-  useEffect(() => {
-    const userInfo = localStorage.getItem('userInfo');
-    
-    if (!userInfo) {
-      navigate('/login');
-      return;
-    }
-    
-    const fetchProfile = async () => {
-      try {
-        const { token } = JSON.parse(userInfo);
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        };
-        
-        const { data } = await axios.get('http://localhost:5000/api/users/profile', config);
-        setUser(data);
-      } catch (error) {
-        console.error('Failed to fetch profile:', error);
-        localStorage.removeItem('userInfo');
-        navigate('/login');
-      } finally {
-        setLoading(false);
-      }
+const Dashboard = () => {
+  const { userInfo } = useContext(AuthContext);
+  const { userPoints, userBadges, getUserRank } = useGamification();
+  const [userRank, setUserRank] = React.useState(null);
+
+  React.useEffect(() => {
+    const fetchRank = async () => {
+      const rank = await getUserRank();
+      setUserRank(rank);
     };
-    
-    fetchProfile();
-  }, [navigate]);
+    fetchRank();
+  }, [getUserRank]);
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('userInfo');
-    navigate('/login');
+  const getNextBadgeProgress = () => {
+    // This is a placeholder - you might want to implement actual progress calculation
+    return 65;
   };
 
   return (
-    <div className="dashboard-container">
-      <h2>Welcome, {user?.name}</h2>
-      
-      <div className="user-profile">
-        <h3>Your Profile</h3>
-        <img src={img1} alt="Your Image" ></img>
-        <p><strong>Email :</strong> {user?.email}</p>
-        <p><strong>Role :</strong> {user?.role}</p>
-        <p><strong>Points :</strong> {user?.points}</p>
-        {user?.bio && (
-          <div className="bio-section">
-            <h4>Bio</h4>
-            <p>{user.bio}</p>
-          </div>
-        )}
-        
-        {user?.expertise && user.expertise.length > 0 && (
-          <div className="expertise-section">
-            <h4>Expertise</h4>
-            <ul>
-              {user.expertise.map((skill, index) => (
-                <li key={index}>{skill}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-      
-      <button onClick={handleLogout} className="logout-button">
-        Logout
-      </button>
-    </div>
+    <Container>
+      <Row className="mb-4">
+        <Col>
+          <h1>Dashboard</h1>
+        </Col>
+        <Col xs="auto">
+          <Link to="/leaderboard" className="btn btn-outline-primary">
+            View Leaderboard
+          </Link>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col md={4}>
+          <Card className="mb-4">
+            <Card.Body>
+              <h5 className="card-title">Welcome, {userInfo?.name}!</h5>
+              <div className="mt-3">
+                <UserPointsDisplay className="mb-3" />
+                {userRank && (
+                  <div className="text-center mt-2">
+                    <small className="text-muted">Current Rank</small>
+                    <h4 className="mb-0">#{userRank}</h4>
+                  </div>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+
+          <Card className="mb-4">
+            <Card.Body>
+              <h5 className="card-title">Progress to Next Badge</h5>
+              <ProgressBar 
+                now={getNextBadgeProgress()} 
+                label={`${getNextBadgeProgress()}%`}
+                className="mb-2"
+              />
+              <small className="text-muted">
+                Keep participating to earn more badges!
+              </small>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={8}>
+          <Card>
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h5 className="card-title mb-0">Your Achievements</h5>
+                <div className="badge bg-primary">
+                  {userBadges.length} Badges
+                </div>
+              </div>
+              <UserBadgesList layout="grid" size="medium" />
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row className="mt-4">
+        <Col>
+          <Card>
+            <Card.Body>
+              <h5 className="card-title">Recent Activity</h5>
+              <div className="activity-list">
+                {/* This would be populated with actual activity data */}
+                <div className="activity-item d-flex align-items-center mb-3">
+                  <FaTrophy className="text-warning me-3" />
+                  <div>
+                    <strong>Earned 100 points</strong>
+                    <br />
+                    <small className="text-muted">2 hours ago</small>
+                  </div>
+                </div>
+                <div className="activity-item d-flex align-items-center mb-3">
+                  <FaMedal className="text-secondary me-3" />
+                  <div>
+                    <strong>Earned "Problem Solver" badge</strong>
+                    <br />
+                    <small className="text-muted">Yesterday</small>
+                  </div>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
-}
+};
 
 export default Dashboard;

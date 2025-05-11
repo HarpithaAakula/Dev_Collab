@@ -3,6 +3,7 @@ import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import NotificationIcon from './notifications/NotificationIcon';
+import UserPointsDisplay from './gamification/UserPointsDisplay';
 import './Layout.css';
 
 const Layout = () => {
@@ -16,31 +17,29 @@ const Layout = () => {
 
   return (
     <>
-      <Navbar bg="light" expand="lg" className="mb-4">
+      <Navbar bg="dark" variant="dark" expand="lg">
         <Container>
-          <Navbar.Brand as={Link} to="/">Problem Solver Hub</Navbar.Brand>
+          <Navbar.Brand as={Link} to="/">CodeCollab</Navbar.Brand>
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="me-auto">
               <Nav.Link as={Link} to="/">Home</Nav.Link>
-              <Nav.Link as={Link} to="/problems">Problems</Nav.Link>
               <Nav.Link as={Link} to="/aboutus">About Us</Nav.Link>
+              <Nav.Link as={Link} to="/leaderboard">Leaderboard</Nav.Link>
+              {userInfo ? (
+                <>
+                  <Nav.Link as={Link} to="/dashboard">Dashboard</Nav.Link>
+                  <Nav.Link as={Link} to="/problems">Problems</Nav.Link>
+                  <Nav.Link as={Link} to="/submit-problem">Submit Problem</Nav.Link>
+                </>
+              ) : null}
             </Nav>
             <Nav>
               {userInfo ? (
                 <>
-                  {/* Notification Icon */}
-                  <div className="nav-notification-icon">
-                    <NotificationIcon />
-                  </div>
-                  
-                  <NavDropdown title={userInfo.name} id="basic-nav-dropdown" align="end">
-                    <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to="/submit-problem">Submit Problem</NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to="/notifications">Notifications</NavDropdown.Item>
-                    <NavDropdown.Divider />
-                    <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
-                  </NavDropdown>
+                  <UserPointsDisplay className="me-3" />
+                  <Nav.Link as={Link} to="/notifications">Notifications</Nav.Link>
+                  <Nav.Link onClick={handleLogout}>Logout</Nav.Link>
                 </>
               ) : (
                 <>

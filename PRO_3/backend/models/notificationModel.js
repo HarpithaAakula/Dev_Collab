@@ -18,7 +18,7 @@ const notificationSchema = mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['new_solution', 'new_message', 'solution_accepted', 'solution_voted'],
+      enum: ['new_solution', 'new_message', 'solution_accepted', 'solution_voted', 'badge_earned'],
     },
     message: {
       type: String,
