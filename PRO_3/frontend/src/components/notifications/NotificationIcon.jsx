@@ -75,8 +75,8 @@ const NotificationIcon = () => {
                     notification.type === 'new_solution' || notification.type === 'solution_accepted' || notification.type === 'solution_voted'
                       ? `/problems/${notification.problemId._id || notification.problemId}`
                       : notification.type === 'new_message'
-                      ? `/collaborate/${notification.problemId._id || notification.problemId}`
-                      : '#'
+                      ? `/problems/${notification.problemId._id || notification.problemId}`
+                      : `/problems/${notification.problemId._id || notification.problemId}`
                   }
                   className={`notification-item unread`}
                   onClick={() => handleNotificationClick(notification)}

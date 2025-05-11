@@ -90,10 +90,16 @@ const CollaborationPage = () => {
       </div>
       
       <div className="action-buttons">
-        <button onClick={() => navigate(`/problems/${problemId}`)}>
+        <button 
+          className="action-button view-solutions"
+          onClick={() => navigate(`/problems/${problemId}`)}
+        >
           View Solutions
         </button>
-        <button onClick={() => navigate('/problems')}>
+        <button 
+          className="action-button back-to-problems"
+          onClick={() => navigate('/problems')}
+        >
           Back to Problems
         </button>
       </div>

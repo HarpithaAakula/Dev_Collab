@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Editor } from '@monaco-editor/react';
 import { 
   getSocket, 
   joinProblemRoom, 
@@ -15,6 +16,7 @@ const CodeCollaborationComponent = ({ problemId }) => {
   const [statusMessage, setStatusMessage] = useState('');
   const [language, setLanguage] = useState('javascript');
   const codeChangeTimeout = useRef(null);
+  const editorRef = useRef(null);
 
   // Join the room when component mounts
   useEffect(() => {
@@ -64,6 +66,7 @@ const CodeCollaborationComponent = ({ problemId }) => {
 
   // Handle user joined notifications
   const handleUserJoined = (data) => {
+    console.log('[DEBUG] user_joined event received:', data);
     setActiveUsers(data.totalUsers);
     setStatusMessage(`A new user has joined. Total users: ${data.totalUsers}`);
     setTimeout(() => {
@@ -73,6 +76,7 @@ const CodeCollaborationComponent = ({ problemId }) => {
 
   // Handle user left notifications
   const handleUserLeft = (data) => {
+    console.log('[DEBUG] user_left event received:', data);
     setActiveUsers(data.totalUsers);
     setStatusMessage(`A user has left. Total users: ${data.totalUsers}`);
     setTimeout(() => {
@@ -80,10 +84,14 @@ const CodeCollaborationComponent = ({ problemId }) => {
     }, 3000);
   };
 
+  // Handle editor mount
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+  };
+
   // Debounce code changes to avoid flooding the server
-  const handleCodeChange = (e) => {
-    const newCode = e.target.value;
-    setCode(newCode);
+  const handleCodeChange = (value) => {
+    setCode(value);
     
     // Clear any existing timeout
     if (codeChangeTimeout.current) {
@@ -92,12 +100,24 @@ const CodeCollaborationComponent = ({ problemId }) => {
     
     // Set a new timeout to send the change after 500ms of inactivity
     codeChangeTimeout.current = setTimeout(() => {
-      sendCodeChange(problemId, newCode);
+      sendCodeChange(problemId, value);
     }, 500);
   };
 
   const handleLanguageChange = (e) => {
     setLanguage(e.target.value);
+  };
+
+  // Map language selection to Monaco language ID
+  const getMonacoLanguage = (lang) => {
+    const languageMap = {
+      javascript: 'javascript',
+      python: 'python',
+      java: 'java',
+      csharp: 'csharp',
+      cpp: 'cpp'
+    };
+    return languageMap[lang] || 'javascript';
   };
 
   return (
@@ -127,13 +147,31 @@ const CodeCollaborationComponent = ({ problemId }) => {
         </div>
       </div>
       
-      <textarea
-        className="code-editor"
-        value={code}
-        onChange={handleCodeChange}
-        placeholder="Write your code here. It will be synchronized with other users in real-time."
-        spellCheck="false"
-      />
+      <div className="monaco-editor-container" style={{ height: '500px', border: '1px solid #ccc' }}>
+        <Editor
+          height="100%"
+          defaultLanguage={getMonacoLanguage(language)}
+          language={getMonacoLanguage(language)}
+          value={code}
+          onChange={handleCodeChange}
+          onMount={handleEditorDidMount}
+          theme="vs-dark"
+          options={{
+            minimap: { enabled: false },
+            fontSize: 14,
+            wordWrap: 'on',
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            lineNumbers: 'on',
+            renderWhitespace: 'selection',
+            tabSize: 2,
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible'
+            }
+          }}
+        />
+      </div>
       
       <div className="collaboration-tips">
         <h4>Collaboration Tips</h4>

@@ -44,10 +44,18 @@ module.exports = (io) => {
       socket.emit('current_code', roomData.code);
       socket.emit('chat_history', roomData.chat);
 
-      socket.to(roomName).emit('user_joined', {
+      // Send the current user count directly to the joining user
+      socket.emit('user_joined', {
         userId: socket.id,
         totalUsers: roomData.users.size
       });
+
+      // Emit to all users in the room (including the joining user)
+      io.to(roomName).emit('user_joined', {
+        userId: socket.id,
+        totalUsers: roomData.users.size
+      });
+      console.log(`[DEBUG] user_joined: ${socket.id} joined ${roomName}, total users: ${roomData.users.size}`);
 
       console.log(`User joined problem room: ${roomName}, Total users: ${roomData.users.size}`);
     });
@@ -115,6 +123,7 @@ module.exports = (io) => {
           userId: socket.id,
           totalUsers: roomData.users.size
         });
+        console.log(`[DEBUG] user_left: ${socket.id} left ${roomName}, total users: ${roomData.users.size}`);
 
         if (roomData.users.size === 0) {
           activeRooms.delete(roomName);
@@ -135,6 +144,7 @@ module.exports = (io) => {
             userId: socket.id,
             totalUsers: roomData.users.size
           });
+          console.log(`[DEBUG] user_left (disconnect): ${socket.id} left ${roomName}, total users: ${roomData.users.size}`);
 
           if (roomData.users.size === 0) {
             activeRooms.delete(roomName);
