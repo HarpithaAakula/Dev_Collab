@@ -101,7 +101,12 @@ export const sendSolutionAccepted = (problemId, solutionId) => {
 export const sendChatMessage = (problemId, message) => {
   const currentSocket = getSocket();
   if (!currentSocket) return;
-  currentSocket.emit('chat_message', { problemId, message });
+  currentSocket.emit('chat_message', { 
+    problemId, 
+    message,
+    timestamp: new Date().toISOString(),
+    userId: currentSocket.id
+  });
 };
 
 // Socket event listeners
@@ -122,8 +127,8 @@ export const onCurrentCode = (callback) => {
 export const onChatMessage = (callback) => {
   const currentSocket = getSocket();
   if (!currentSocket) return () => {};
-  currentSocket.on('new_chat_message', callback);
-  return () => currentSocket.off('new_chat_message', callback);
+  currentSocket.on('chat_message', callback);
+  return () => currentSocket.off('chat_message', callback);
 };
 
 export const onChatHistory = (callback) => {

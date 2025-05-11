@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   sendChatMessage, 
   onChatMessage, 
-  onChatHistory 
+  onChatHistory,
+  getSocket,
+  joinProblemRoom
 } from '../services/socketService';
 
 const ChatComponent = ({ problemId }) => {
@@ -12,11 +14,19 @@ const ChatComponent = ({ problemId }) => {
 
   // Set up chat listeners
   useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Join the problem room
+    joinProblemRoom(problemId);
+
     const chatMessageCleanup = onChatMessage((message) => {
+      console.log('Received chat message:', message);
       setMessages((prevMessages) => [...prevMessages, message]);
     });
     
     const chatHistoryCleanup = onChatHistory((history) => {
+      console.log('Received chat history:', history);
       setMessages(history);
     });
     
@@ -24,7 +34,7 @@ const ChatComponent = ({ problemId }) => {
       chatMessageCleanup();
       chatHistoryCleanup();
     };
-  }, []);
+  }, [problemId]);
 
   // Scroll to bottom of chat when messages update
   useEffect(() => {
@@ -38,6 +48,9 @@ const ChatComponent = ({ problemId }) => {
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim()) {
+      const socket = getSocket();
+      if (!socket) return;
+
       sendChatMessage(problemId, newMessage.trim());
       setNewMessage('');
     }
@@ -64,10 +77,10 @@ const ChatComponent = ({ problemId }) => {
           messages.map((msg, index) => (
             <div 
               key={index} 
-              className={`chat-message ${msg.userId === getSocket().id ? 'own-message' : 'other-message'}`}
+              className={`chat-message ${msg.userId === getSocket()?.id ? 'own-message' : 'other-message'}`}
             >
               <div className="message-header">
-                <span className="user-id">{msg.userId === getSocket().id ? 'You' : `User ${msg.userId.substring(0, 5)}...`}</span>
+                <span className="user-id">{msg.userId === getSocket()?.id ? 'You' : `User ${msg.userId?.substring(0, 5)}...`}</span>
                 <span className="timestamp">{formatTime(msg.timestamp)}</span>
               </div>
               <p className="message-content">{msg.message}</p>

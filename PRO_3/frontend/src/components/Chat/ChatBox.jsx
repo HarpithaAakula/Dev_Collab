@@ -152,17 +152,17 @@ const ChatBox = ({ problemId }) => {
             {messages.map((message) => (
               <div 
                 key={message._id}
-                className={`p-2 rounded-lg ${
-                  message.user === userInfo._id 
-                    ? 'bg-blue-100 ml-auto max-w-3/4' 
-                    : 'bg-gray-100 max-w-3/4'
-                }`}
+                className={`p-2 rounded-lg bg-gray-100 max-w-3/4 text-left`}
+                style={{ marginLeft: 0 }}
               >
-                <p className="text-sm font-semibold">{message.userName}</p>
-                <p>{message.content}</p>
-                <p className="text-xs text-gray-500 text-right">
-                  {new Date(message.createdAt).toLocaleTimeString()}
-                </p>
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">{message.userName}</span>
+                    <span className="text-sm font-semibold">:</span>
+                    <span className="text-base ml-1">{message.content}</span>
+                  </div>
+                  <span className="text-xs text-gray-500 whitespace-nowrap ml-4">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
