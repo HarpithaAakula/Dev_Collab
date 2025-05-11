@@ -1,4 +1,9 @@
+import React, { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
+
 function Home() {
+    const { userInfo } = useContext(AuthContext);
+
     return (
       <div className="home-container">
         <div className="hero-section">
@@ -6,14 +11,16 @@ function Home() {
           <p>
             Connect with fellow developers, solve problems together, and build amazing solutions
           </p>
-          <div className="cta-buttons">
-            <a href="/register" className="cta-button primary">
-              Get Started
-            </a>
-            <a href="/login" className="cta-button secondary">
-              Sign In
-            </a>
-          </div>
+          {!userInfo && (
+            <div className="cta-buttons">
+              <a href="/register" className="cta-button primary">
+                Get Started
+              </a>
+              <a href="/login" className="cta-button secondary">
+                Sign In
+              </a>
+            </div>
+          )}
         </div>
         
         <div className="features-section">

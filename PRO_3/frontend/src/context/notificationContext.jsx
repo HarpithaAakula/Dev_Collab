@@ -49,13 +49,9 @@ export const NotificationProvider = ({ children }) => {
       
       await axios.put(`/api/notifications/${notificationId}/read`, {}, config);
       
-      // Update local state
+      // Remove the notification from the list after marking as read
       setNotifications(prevNotifications =>
-        prevNotifications.map(notification =>
-          notification._id === notificationId
-            ? { ...notification, isRead: true }
-            : notification
-        )
+        prevNotifications.filter(notification => notification._id !== notificationId)
       );
       
       setUnreadCount(prev => Math.max(0, prev - 1));

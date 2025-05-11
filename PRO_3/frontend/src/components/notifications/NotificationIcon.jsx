@@ -6,6 +6,7 @@ import './Notifications.css';
 
 const NotificationIcon = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, fetchNotifications  } = useContext(NotificationContext);
+  const unreadNotifications = notifications.filter(n => !n.isRead);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -62,12 +63,12 @@ const NotificationIcon = () => {
           </div>
 
           <div className="notification-list">
-            {!notifications ? (
+            {!unreadNotifications ? (
               <div className="no-notifications">Loading...</div>
-            ) : notifications.length === 0 ? (
+            ) : unreadNotifications.length === 0 ? (
               <div className="no-notifications">No notifications</div>
             ) : (
-              notifications.slice(0, 10).map((notification) => (
+              unreadNotifications.slice(0, 10).map((notification) => (
                 <Link
                   key={notification._id}
                   to={
@@ -77,7 +78,7 @@ const NotificationIcon = () => {
                       ? `/collaborate/${notification.problemId._id || notification.problemId}`
                       : '#'
                   }
-                  className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
+                  className={`notification-item unread`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="notification-content">

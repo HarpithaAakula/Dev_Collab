@@ -67,6 +67,8 @@ const Notifications = () => {
     }
   };
 
+  const unreadNotifications = notifications.filter(n => !n.isRead);
+
   return (
     <Container className="py-4">
       <Row className="mb-4">
@@ -90,24 +92,24 @@ const Notifications = () => {
             <span className="visually-hidden">Loading...</span>
           </Spinner>
         </div>
-      ) : notifications.length === 0 ? (
+      ) : unreadNotifications.length === 0 ? (
         <div className="text-center py-5">
           <h5 className="text-muted">No notifications yet</h5>
           <p>When you receive notifications, they will appear here.</p>
         </div>
       ) : (
         <div className="notification-list-container">
-          {notifications.map((notification) => (
+          {unreadNotifications.map((notification) => (
             <div 
               key={notification._id} 
-              className={`notification-item-full ${!notification.isRead ? 'unread' : ''}`}
+              className={`notification-item-full unread`}
             >
               <Row className="align-items-center">
                 <Col xs={12} md={9}>
                   <Link 
                     to={getNotificationPath(notification)}
                     className="notification-link"
-                    onClick={() => !notification.isRead && handleMarkAsRead(notification._id)}
+                    onClick={() => handleMarkAsRead(notification._id)}
                   >
                     <div className="notification-content-full">
                       <p className="notification-message">{notification.message}</p>
@@ -116,17 +118,15 @@ const Notifications = () => {
                   </Link>
                 </Col>
                 <Col xs={12} md={3} className="text-end action-buttons">
-                  {!notification.isRead && (
-                    <Button 
-                      variant="outline-success" 
-                      size="sm" 
-                      className="me-2"
-                      onClick={() => handleMarkAsRead(notification._id)}
-                      title="Mark as read"
-                    >
-                      <BsCheckCircle />
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline-success" 
+                    size="sm" 
+                    className="me-2"
+                    onClick={() => handleMarkAsRead(notification._id)}
+                    title="Mark as read"
+                  >
+                    <BsCheckCircle />
+                  </Button>
                   <Button
                     variant="outline-danger"
                     size="sm"
