@@ -17,7 +17,7 @@ const Notifications = () => {
   useEffect(() => {
     // Refresh notifications when component mounts
     fetchNotifications();
-  }, [fetchNotifications]);
+  }, []);
 
   // Handle read notification
   const handleMarkAsRead = (id) => {
@@ -54,14 +54,14 @@ const Notifications = () => {
   // Determine link path based on notification type
   const getNotificationPath = (notification) => {
     const { type, problemId } = notification;
-    
+    const id = problemId?._id || problemId; // <-- This line is the fix!
     switch (type) {
       case 'new_solution':
       case 'solution_accepted':
       case 'solution_voted':
-        return `/problems/${problemId}`;
+        return `/problems/${id}`;
       case 'new_message':
-        return `/collaborate/${problemId}`;
+        return `/collaborate/${id}`;
       default:
         return '#';
     }

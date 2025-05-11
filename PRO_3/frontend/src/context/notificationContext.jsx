@@ -25,7 +25,7 @@ export const NotificationProvider = ({ children }) => {
         },
       };
       
-      const { data } = await axios.get('/api/notifications', config);
+      const { data } = await axios.get('http://localhost:5000/api/notifications', config);
       
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
@@ -124,6 +124,9 @@ export const NotificationProvider = ({ children }) => {
     
     const socket = getSocket();
     if (!socket) return;
+    
+    // Join notification room
+    socket.emit('join_notifications', { userId: userInfo._id });
     
     // Handler for new notifications
     const handleNewNotification = (notification) => {

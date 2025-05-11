@@ -8,6 +8,17 @@ module.exports = (io) => {
     console.log(`User connected: ${socket.id}`);
     socket.emit('test_event', { msg: 'Hello from server' });
 
+    // Join user's notification room
+    socket.on('join_notifications', ({ userId }) => {
+      if (!userId) {
+        console.error('join_notifications: Missing userId');
+        return;
+      }
+      const notificationRoom = `user_${userId}`;
+      socket.join(notificationRoom);
+      console.log(`User joined notification room: ${notificationRoom}`);
+    });
+
     // Join problem room
     socket.on('join_problem', ({ problemId, userId, userName }) => {
       if (!problemId) {

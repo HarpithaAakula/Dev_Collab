@@ -5,7 +5,7 @@ import { BsBell, BsBellFill } from 'react-icons/bs';
 import './Notifications.css';
 
 const NotificationIcon = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useContext(NotificationContext);
+  const { notifications, unreadCount, markAsRead, markAllAsRead, fetchNotifications  } = useContext(NotificationContext);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -35,7 +35,10 @@ const NotificationIcon = () => {
     <div className="notification-container" ref={dropdownRef}>
       <button 
         className="notification-icon-button" 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) fetchNotifications(); // fetch when opening
+        }}
         aria-label="Notifications"
       >
         {unreadCount > 0 ? <BsBellFill /> : <BsBell />}
@@ -69,9 +72,9 @@ const NotificationIcon = () => {
                   key={notification._id}
                   to={
                     notification.type === 'new_solution' || notification.type === 'solution_accepted' || notification.type === 'solution_voted'
-                      ? `/problems/${notification.problemId}`
+                      ? `/problems/${notification.problemId._id || notification.problemId}`
                       : notification.type === 'new_message'
-                      ? `/collaborate/${notification.problemId}`
+                      ? `/collaborate/${notification.problemId._id || notification.problemId}`
                       : '#'
                   }
                   className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
