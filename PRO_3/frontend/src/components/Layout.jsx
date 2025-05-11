@@ -28,19 +28,27 @@ const Layout = () => {
               <Nav.Link as={Link} to="/leaderboard">Leaderboard</Nav.Link>
               {userInfo ? (
                 <>
-                  <Nav.Link as={Link} to="/dashboard">Dashboard</Nav.Link>
                   <Nav.Link as={Link} to="/problems">Problems</Nav.Link>
-                  <Nav.Link as={Link} to="/submit-problem">Submit Problem</Nav.Link>
-                </>
+                  </>
               ) : null}
             </Nav>
             <Nav>
               {userInfo ? (
                 <>
-                  <UserPointsDisplay className="me-3" />
-                  <Nav.Link as={Link} to="/notifications">Notifications</Nav.Link>
-                  <Nav.Link onClick={handleLogout}>Logout</Nav.Link>
-                </>
+                <UserPointsDisplay className="me-3" />
+                   {/* Notification Icon */}
+                   <div className="nav-notification-icon">
+                    <NotificationIcon />
+                  </div>
+                  
+                  <NavDropdown title={userInfo.name} id="basic-nav-dropdown" align="end">
+                    <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to="/submit-problem">Submit Problem</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to="/notifications">Notifications</NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
+                  </NavDropdown>
+                  </>
               ) : (
                 <>
                   <Nav.Link as={Link} to="/login">Login</Nav.Link>
