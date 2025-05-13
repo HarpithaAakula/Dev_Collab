@@ -32,15 +32,14 @@ module.exports = (io) => {
 
       if (!activeRooms.has(roomName)) {
         activeRooms.set(roomName, {
-          users: new Map(), // Changed to Map to store user details
+          users: new Set(),
           code: '',
           chat: []
         });
       }
 
       const roomData = activeRooms.get(roomName);
-      // Store user info including userId and userName
-      roomData.users.set(socket.id, { userId, userName });
+      roomData.users.add(socket.id);
 
       socket.emit('current_code', roomData.code);
       socket.emit('chat_history', roomData.chat);
@@ -54,7 +53,6 @@ module.exports = (io) => {
       // Emit to all users in the room (including the joining user)
       io.to(roomName).emit('user_joined', {
         userId: socket.id,
-        userName: userName,
         totalUsers: roomData.users.size
       });
       console.log(`[DEBUG] user_joined: ${socket.id} joined ${roomName}, total users: ${roomData.users.size}`);
@@ -80,4 +78,79 @@ module.exports = (io) => {
 
     // Solution votes
     socket.on('solution_vote', ({ problemId, solutionId, votes }) => {
-      const roomName = getRoomName(problemId)
+      const roomName = getRoomName(problemId);
+      socket.to(roomName).emit('vote_updated', {
+        solutionId,
+        votes
+      });
+    });
+
+    // Solution accepted
+    socket.on('solution_accepted', ({ problemId, solutionId }) => {
+      const roomName = getRoomName(problemId);
+      socket.to(roomName).emit('acceptance_updated', {
+        solutionId,
+        isAccepted: true
+      });
+    });
+
+    // Chat messages - Only relay messages, don't save them here
+    socket.on('chat_message', ({ problemId, message, userId, userName, messageId }) => {
+      const roomName = getRoomName(problemId);
+      console.log('Socket server: relaying message to', roomName);
+
+      // We're relaying a message that's already been saved via the REST API
+      socket.to(roomName).emit('new_chat_message', {
+        problem: problemId,
+        user: userId,
+        userName,
+        content: message,
+        _id: messageId, // Important: include the _id from the database
+        createdAt: new Date().toISOString()
+      });
+    });
+
+    // Leave room
+    socket.on('leave_problem', ({ problemId }) => {
+      const roomName = getRoomName(problemId);
+      socket.leave(roomName);
+
+      if (activeRooms.has(roomName)) {
+        const roomData = activeRooms.get(roomName);
+        roomData.users.delete(socket.id);
+
+        io.to(roomName).emit('user_left', {
+          userId: socket.id,
+          totalUsers: roomData.users.size
+        });
+        console.log(`[DEBUG] user_left: ${socket.id} left ${roomName}, total users: ${roomData.users.size}`);
+
+        if (roomData.users.size === 0) {
+          activeRooms.delete(roomName);
+        }
+      }
+
+      console.log(`User ${socket.id} left room ${roomName}`);
+    });
+
+    // Disconnect
+    socket.on('disconnect', () => {
+      console.log(`User disconnected: ${socket.id}`);
+      activeRooms.forEach((roomData, roomName) => {
+        if (roomData.users.has(socket.id)) {
+          roomData.users.delete(socket.id);
+
+          io.to(roomName).emit('user_left', {
+            userId: socket.id,
+            totalUsers: roomData.users.size
+          });
+          console.log(`[DEBUG] user_left (disconnect): ${socket.id} left ${roomName}, total users: ${roomData.users.size}`);
+
+          if (roomData.users.size === 0) {
+            activeRooms.delete(roomName);
+          }
+        }
+      });
+    });
+  });
+};

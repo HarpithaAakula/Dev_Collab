@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { getSocket, joinProblemRoom } from '../../services/socketService.js';
+import { getSocket, joinProblemRoom, sendChatMessage, onChatMessage } from '../../services/socketService.js';
 
 const ChatBox = ({ problemId }) => {
   const [messages, setMessages] = useState([]);
@@ -27,7 +27,7 @@ const ChatBox = ({ problemId }) => {
     
     // Get socket instance
     const socket = getSocket();
-    console.log('Socket instance:', socket);
+    console.log('Socket instance:', socket?.id || 'No socket connection');
     
     // Fetch messages when component mounts
     const fetchMessages = async () => {
@@ -56,47 +56,56 @@ const ChatBox = ({ problemId }) => {
       joinProblemRoom(problemId);
     }
       
+    // Listen for new messages via socket
     const handleNewMessage = (message) => {
       console.log('Received new message via socket:', message);
       // Prevent duplicate messages
       setMessages((prevMessages) => {
-        // Check if message already exists in the array
-        if (!prevMessages.some(msg => msg._id === message._id)) {
+        // Check if message already exists in the array by _id
+        if (message._id && !prevMessages.some(msg => msg._id === message._id)) {
           return [...prevMessages, message];
         }
         return prevMessages;
       });
     };
-    socket.on('new_chat_message', handleNewMessage);
+    
+    // Set up socket event listener for new messages
+    const cleanup = onChatMessage(handleNewMessage);
 
     // Attach test listener for built-in event
     const handleConnect = () => {
-      console.log('Socket connected event received in ChatBox:', socket.id);
+      console.log('Socket connected event received in ChatBox:', socket?.id);
     };
-    socket.on('connect', handleConnect);
-
-    const handleTestEvent = (data) => {
-      console.log('Test event received:', data);
-    };
-    socket.on('test_event', handleTestEvent);
     
-    // Clean up on unmount
+    if (socket) {
+      socket.on('connect', handleConnect);
+
+      const handleTestEvent = (data) => {
+        console.log('Test event received:', data);
+      };
+      socket.on('test_event', handleTestEvent);
+      
+      // Clean up on unmount
+      return () => {
+        isMounted = false;
+        cleanup(); // Clean up the new message listener
+        socket.off('connect', handleConnect);
+        socket.off('test_event', handleTestEvent);
+      };
+    }
+    
     return () => {
       isMounted = false;
-      socket.off('new_chat_message', handleNewMessage);
-      socket.off('connect', handleConnect);
-      socket.off('test_event', handleTestEvent);
+      cleanup(); // Still clean up even if no socket
     };
   }, [problemId, token]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userInfo) return;
+    if (!newMessage.trim() || !userInfo?.token) return;
 
     try {
-      const socket = getSocket();
-      
-      // Send message via REST API only (not via socket directly)
+      // Send message via REST API
       const response = await axios.post(
         `http://localhost:5000/api/chat/${problemId}`,
         { content: newMessage },
@@ -107,24 +116,23 @@ const ChatBox = ({ problemId }) => {
       
       // Get the created message from the response
       const newMessageData = response.data;
+      console.log('Message sent via API, response:', newMessageData);
       
       // Add the message to the UI immediately (don't wait for socket)
       setMessages(prevMessages => [...prevMessages, newMessageData]);
       
-      // Emit socket event ONLY to notify other clients
-      socket.emit('chat_message', {
+      // Now that we have the message ID from the database, notify other clients via socket
+      sendChatMessage(
         problemId,
-        message: newMessage,
-        messageId: newMessageData._id
-      });
+        newMessage,
+        newMessageData._id // Pass the ID from the created message
+      );
       
       setNewMessage('');
       setError(null);
     } catch (error) {
       console.error('Error sending message:', error);
-      if (!messages.some(msg => msg.content === newMessage)) {
-        setError('Failed to send message');
-      }
+      setError('Failed to send message');
     }
   };
 
@@ -151,7 +159,7 @@ const ChatBox = ({ problemId }) => {
           <div className="space-y-3">
             {messages.map((message) => (
               <div 
-                key={message._id}
+                key={message._id || `temp-${Date.now()}`}
                 className={`p-2 rounded-lg bg-gray-100 max-w-3/4 text-left`}
                 style={{ marginLeft: 0 }}
               >
@@ -161,7 +169,9 @@ const ChatBox = ({ problemId }) => {
                     <span className="text-sm font-semibold">:</span>
                     <span className="text-base ml-1">{message.content}</span>
                   </div>
-                  <span className="text-xs text-gray-500 whitespace-nowrap ml-4">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap ml-4">
+                    {message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : 'just now'}
+                  </span>
                 </div>
               </div>
             ))}

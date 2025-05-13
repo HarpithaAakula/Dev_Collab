@@ -35,9 +35,8 @@ export const getSocket = () => {
   if (!socket) {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
     if (userInfo?.token) {
-      socket= initSocket(userInfo.token);
+      socket = initSocket(userInfo.token);
     }
-   
   }
   return socket;
 };
@@ -66,8 +65,15 @@ export const joinProblemRoom = (problemId) => {
     currentSocket.emit('leave_problem', { problemId: currentRoom });
   }
   
+  // Get current user data
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  
   console.log(`Joining problem room: ${problemId}`);
-  currentSocket.emit('join_problem', { problemId });
+  currentSocket.emit('join_problem', { 
+    problemId, 
+    userId: userInfo._id, 
+    userName: userInfo.name 
+  });
   currentRoom = problemId;
 };
 
@@ -98,14 +104,20 @@ export const sendSolutionAccepted = (problemId, solutionId) => {
 };
 
 // Chat functionality
-export const sendChatMessage = (problemId, message) => {
+export const sendChatMessage = (problemId, message, messageId) => {
   const currentSocket = getSocket();
   if (!currentSocket) return;
+  
+  // Get current user data
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  
   currentSocket.emit('chat_message', { 
     problemId, 
     message,
-    timestamp: new Date().toISOString(),
-    userId: currentSocket.id
+    messageId,
+    userId: userInfo._id,
+    userName: userInfo.name,
+    timestamp: new Date().toISOString()
   });
 };
 
@@ -124,11 +136,19 @@ export const onCurrentCode = (callback) => {
   return () => currentSocket.off('current_code', callback);
 };
 
+export const onNewMessage = (callback) => {
+  const currentSocket = getSocket();
+  if (!currentSocket) return () => {};
+  currentSocket.on('new_chat_message', callback);
+  return () => currentSocket.off('new_chat_message', callback);
+};
+
+// Adding onChatMessage for backwards compatibility with your components
 export const onChatMessage = (callback) => {
   const currentSocket = getSocket();
   if (!currentSocket) return () => {};
-  currentSocket.on('chat_message', callback);
-  return () => currentSocket.off('chat_message', callback);
+  currentSocket.on('new_chat_message', callback);
+  return () => currentSocket.off('new_chat_message', callback);
 };
 
 export const onChatHistory = (callback) => {
