@@ -122,11 +122,11 @@ function AboutUs() {
             </div>
             <div className="contact-item">
               <i className="fas fa-phone"></i>
-              <p>Phone: +1 (555) 123-4567</p>
+              <p>Phone: +91 xxx 123-4567</p>
             </div>
             <div className="contact-item">
               <i className="fas fa-map-marker-alt"></i>
-              <p>Address: 123 Tech Street, Silicon Valley, CA 94043</p>
+              <p>Address: BMSIT,Bengaluru,IN 560064</p>
             </div>
           </div>
           <div className="contact-hours">
@@ -141,7 +141,7 @@ function AboutUs() {
           <div className="social-links">
             <a href="https://twitter.com/devcollab" target="_blank" rel="noopener noreferrer">Twitter</a>
             <a href="https://linkedin.com/company/devcollab" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a href="https://github.com/devcollab" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://github.com/HarpithaAakula/Dev_Collab" target="_blank" rel="noopener noreferrer">GitHub</a>
           </div>
         </div>
       </div>

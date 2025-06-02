@@ -1,7 +1,9 @@
 const Chat = require('../models/chatModel');
+const { awardPointsAndBadges, trackLanguageUsage } = require('../controllers/gamificationController');
 
 module.exports = (io) => {
   const activeRooms = new Map();
+  const userRooms = new Map(); // Track which room each user is in
   const getRoomName = (problemId) => `problem_${problemId}`;
 
   io.on('connection', (socket) => {
@@ -16,18 +18,47 @@ module.exports = (io) => {
       }
       const notificationRoom = `user_${userId}`;
       socket.join(notificationRoom);
+      socket.userId = userId; // Store userId on socket for gamification
       console.log(`User joined notification room: ${notificationRoom}`);
     });
 
-    // Join problem room
-    socket.on('join_problem', ({ problemId, userId, userName }) => {
+    // Join problem room with gamification
+    socket.on('join_problem', async ({ problemId, userId, userName, language }) => {
       if (!problemId) {
         console.error('join_problem: Missing problemId');
         return;
       }
 
       const roomName = getRoomName(problemId);
+      
+      // Check if user is already in this room to prevent point farming
+      const currentRoom = userRooms.get(socket.id);
+      if (currentRoom === roomName) {
+        console.log(`User ${socket.id} already in room ${roomName}`);
+        return;
+      }
+
+      // Leave previous room if exists
+      if (currentRoom) {
+        socket.leave(currentRoom);
+        if (activeRooms.has(currentRoom)) {
+          const oldRoomData = activeRooms.get(currentRoom);
+          oldRoomData.users.delete(socket.id);
+          
+          io.to(currentRoom).emit('user_left', {
+            userId: socket.id,
+            totalUsers: oldRoomData.users.size
+          });
+          
+          if (oldRoomData.users.size === 0) {
+            activeRooms.delete(currentRoom);
+          }
+        }
+      }
+
       socket.join(roomName);
+      userRooms.set(socket.id, roomName);
+      socket.userId = userId; // Store for gamification
       console.log('Socket joined rooms:', Array.from(socket.rooms));
 
       if (!activeRooms.has(roomName)) {
@@ -43,6 +74,20 @@ module.exports = (io) => {
 
       socket.emit('current_code', roomData.code);
       socket.emit('chat_history', roomData.chat);
+
+      // Award points for joining room (only once per room per session)
+      try {
+        if (userId) {
+          await awardPointsAndBadges(userId, 'JOIN_ROOM', io);
+          
+          // Track language usage if provided
+          if (language) {
+            await trackLanguageUsage(userId, language);
+          }
+        }
+      } catch (error) {
+        console.error('Error awarding points for joining room:', error);
+      }
 
       // Send the current user count directly to the joining user
       socket.emit('user_joined', {
@@ -94,10 +139,19 @@ module.exports = (io) => {
       });
     });
 
-    // Chat messages - Only relay messages, don't save them here
-    socket.on('chat_message', ({ problemId, message, userId, userName, messageId }) => {
+    // Chat messages with gamification
+    socket.on('chat_message', async ({ problemId, message, userId, userName, messageId }) => {
       const roomName = getRoomName(problemId);
       console.log('Socket server: relaying message to', roomName);
+
+      // Award points for chat message
+      try {
+        if (userId) {
+          await awardPointsAndBadges(userId, 'CHAT_MESSAGE', io);
+        }
+      } catch (error) {
+        console.error('Error awarding points for chat message:', error);
+      }
 
       // We're relaying a message that's already been saved via the REST API
       socket.to(roomName).emit('new_chat_message', {
@@ -114,6 +168,7 @@ module.exports = (io) => {
     socket.on('leave_problem', ({ problemId }) => {
       const roomName = getRoomName(problemId);
       socket.leave(roomName);
+      userRooms.delete(socket.id); // Remove from tracking
 
       if (activeRooms.has(roomName)) {
         const roomData = activeRooms.get(roomName);
@@ -136,6 +191,13 @@ module.exports = (io) => {
     // Disconnect
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.id}`);
+      
+      // Remove from user rooms tracking
+      const userRoom = userRooms.get(socket.id);
+      if (userRoom) {
+        userRooms.delete(socket.id);
+      }
+
       activeRooms.forEach((roomData, roomName) => {
         if (roomData.users.has(socket.id)) {
           roomData.users.delete(socket.id);

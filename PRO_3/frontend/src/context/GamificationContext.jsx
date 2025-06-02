@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { AuthContext } from './AuthContext';
-import { getSocket } from '../services/socketService';
+import { getSocket, onGamificationUpdate, onNotification } from '../services/socketService';
 
 const GamificationContext = createContext();
 
@@ -9,8 +9,12 @@ export const GamificationProvider = ({ children }) => {
   const { userInfo } = useContext(AuthContext);
   const [userPoints, setUserPoints] = useState(0);
   const [userBadges, setUserBadges] = useState([]);
+  const [userRank, setUserRank] = useState(null);
+  const [userLevel, setUserLevel] = useState(1);
+  const [levelProgress, setLevelProgress] = useState({ progressPoints: 0, requiredPoints: 100, percentage: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   // Fetch initial gamification status
   const fetchGamificationStatus = async () => {
@@ -26,8 +30,24 @@ export const GamificationProvider = ({ children }) => {
       };
 
       const { data } = await axios.get('http://localhost:5000/api/gamification/status', config);
-      setUserPoints(data.points);
-      setUserBadges(data.badges);
+      setUserPoints(data.points || 0);
+      setUserBadges(data.badges || []);
+      setUserRank(data.rank || null);
+      
+      // Calculate level and progress
+      const level = Math.floor(data.points / 100) + 1;
+      const currentLevelPoints = (level - 1) * 100;
+      const nextLevelPoints = level * 100;
+      const progressPoints = data.points - currentLevelPoints;
+      const requiredPoints = nextLevelPoints - currentLevelPoints;
+      
+      setUserLevel(level);
+      setLevelProgress({
+        progressPoints,
+        requiredPoints,
+        percentage: Math.round((progressPoints / requiredPoints) * 100)
+      });
+      
     } catch (error) {
       console.error('Error fetching gamification status:', error);
       setError('Failed to load gamification status');
@@ -43,43 +63,73 @@ export const GamificationProvider = ({ children }) => {
     const socket = getSocket();
     if (!socket) return;
 
-    // Handle points updates
-    const handlePointsUpdate = ({ points }) => {
-      setUserPoints(prevPoints => prevPoints + points);
-    };
-
-    // Handle badge updates
-    const handleBadgesEarned = ({ badges, points }) => {
-      setUserBadges(prevBadges => [...prevBadges, ...badges]);
-      if (points) {
-        setUserPoints(prevPoints => prevPoints + points);
+    // Handle gamification updates
+    const handleGamificationUpdate = ({ points, totalPoints, newBadges }) => {
+      console.log('Gamification update received:', { points, totalPoints, newBadges });
+      
+      if (totalPoints !== undefined) {
+        setUserPoints(totalPoints);
+        
+        // Update level and progress
+        const level = Math.floor(totalPoints / 100) + 1;
+        const currentLevelPoints = (level - 1) * 100;
+        const nextLevelPoints = level * 100;
+        const progressPoints = totalPoints - currentLevelPoints;
+        const requiredPoints = nextLevelPoints - currentLevelPoints;
+        
+        setUserLevel(level);
+        setLevelProgress({
+          progressPoints,
+          requiredPoints,
+          percentage: Math.round((progressPoints / requiredPoints) * 100)
+        });
+      }
+      
+      if (newBadges && newBadges.length > 0) {
+        setUserBadges(prevBadges => {
+          const existingIds = prevBadges.map(badge => badge.id);
+          const uniqueNewBadges = newBadges.filter(badge => !existingIds.includes(badge.id));
+          return [...prevBadges, ...uniqueNewBadges];
+        });
       }
     };
 
-    // Handle combined gamification updates
-    const handleGamificationUpdate = ({ points, newBadges }) => {
-      if (points) {
-        setUserPoints(prevPoints => prevPoints + points);
-      }
-      if (newBadges?.length > 0) {
-        setUserBadges(prevBadges => [...prevBadges, ...newBadges]);
-      }
+    // Handle notifications
+    const handleNotification = (notification) => {
+      console.log('Notification received:', notification);
+      setNotifications(prev => [
+        { ...notification, id: Date.now(), timestamp: new Date() },
+        ...prev.slice(0, 9) // Keep only 10 most recent notifications
+      ]);
+
+      // Auto-remove notification after 5 seconds
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+      }, 5000);
     };
 
     // Subscribe to socket events
-    socket.on('points_updated', handlePointsUpdate);
-    socket.on('badges_earned', handleBadgesEarned);
-    socket.on('gamification_update', handleGamificationUpdate);
+    const unsubscribeGamification = onGamificationUpdate(handleGamificationUpdate);
+    const unsubscribeNotifications = onNotification(handleNotification);
 
     // Fetch initial status
     fetchGamificationStatus();
 
     return () => {
-      socket.off('points_updated', handlePointsUpdate);
-      socket.off('badges_earned', handleBadgesEarned);
-      socket.off('gamification_update', handleGamificationUpdate);
+      unsubscribeGamification();
+      unsubscribeNotifications();
     };
   }, [userInfo]);
+
+  // Clear notifications
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
+  // Remove specific notification
+  const removeNotification = (notificationId) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  };
 
   // Get leaderboard data
   const getLeaderboard = async (page = 1, limit = 10) => {
@@ -131,6 +181,7 @@ export const GamificationProvider = ({ children }) => {
         },
       };
       const { data } = await axios.get('http://localhost:5000/api/gamification/rank', config);
+      setUserRank(data.rank);
       return data.rank;
     } catch (error) {
       console.error('Error fetching user rank:', error);
@@ -138,16 +189,42 @@ export const GamificationProvider = ({ children }) => {
     }
   };
 
+  // Get points needed for next badge
+  const getNextBadgeProgress = () => {
+    // This would need to be implemented based on your badge requirements
+    // For now, returning a simple example
+    const pointMilestones = [100, 250, 500, 1000, 2500, 5000];
+    const nextMilestone = pointMilestones.find(milestone => milestone > userPoints);
+    
+    if (nextMilestone) {
+      const progress = (userPoints / nextMilestone) * 100;
+      return {
+        nextMilestone,
+        progress: Math.round(progress),
+        pointsNeeded: nextMilestone - userPoints
+      };
+    }
+    
+    return null;
+  };
+
   const value = {
     userPoints,
     userBadges,
+    userRank,
+    userLevel,
+    levelProgress,
     loading,
     error,
+    notifications,
     getLeaderboard,
     getAllBadges,
     hasBadge,
     getUserRank,
-    refreshStatus: fetchGamificationStatus
+    getNextBadgeProgress,
+    refreshStatus: fetchGamificationStatus,
+    clearNotifications,
+    removeNotification
   };
 
   return (

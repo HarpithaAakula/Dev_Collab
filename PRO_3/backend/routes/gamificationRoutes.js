@@ -4,7 +4,8 @@ const { protect } = require('../middleware/authMiddleware');
 const {
   getLeaderboard,
   getUserGamificationStatus,
-  getBadgeDetails
+  getBadgeDetails,
+  getUserRank
 } = require('../controllers/gamificationController');
 
 // @desc    Get leaderboard
@@ -20,7 +21,10 @@ router.get('/leaderboard', async (req, res) => {
     res.json(leaderboard);
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
-    res.status(500).json({ message: 'Error fetching leaderboard' });
+    res.status(500).json({ 
+      message: 'Error fetching leaderboard',
+      error: process.env.NODE_ENV === 'production' ? 'Server Error' : error.message 
+    });
   }
 });
 
@@ -33,7 +37,26 @@ router.get('/status', protect, async (req, res) => {
     res.json(status);
   } catch (error) {
     console.error('Error fetching user gamification status:', error);
-    res.status(500).json({ message: 'Error fetching gamification status' });
+    res.status(500).json({ 
+      message: 'Error fetching gamification status',
+      error: process.env.NODE_ENV === 'production' ? 'Server Error' : error.message 
+    });
+  }
+});
+
+// @desc    Get user's rank
+// @route   GET /api/gamification/rank
+// @access  Private
+router.get('/rank', protect, async (req, res) => {
+  try {
+    const rankData = await getUserRank(req.user._id);
+    res.json(rankData);
+  } catch (error) {
+    console.error('Error fetching user rank:', error);
+    res.status(500).json({ 
+      message: 'Error fetching user rank',
+      error: process.env.NODE_ENV === 'production' ? 'Server Error' : error.message 
+    });
   }
 });
 
@@ -46,8 +69,11 @@ router.get('/badges', async (req, res) => {
     res.json(badges);
   } catch (error) {
     console.error('Error fetching badge details:', error);
-    res.status(500).json({ message: 'Error fetching badge details' });
+    res.status(500).json({ 
+      message: 'Error fetching badge details',
+      error: process.env.NODE_ENV === 'production' ? 'Server Error' : error.message 
+    });
   }
 });
 
-module.exports = router; 
+module.exports = router;

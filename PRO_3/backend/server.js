@@ -16,7 +16,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
   cors: {
-    origin: 'http://localhost:5173', // Your frontend URL
+    origin: 'http://localhost:5173', // frontend URL
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -24,7 +24,7 @@ const io = socketio(server, {
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Specify the exact origin instead of using *
+  origin: 'http://localhost:5173', 
   credentials: true, // Allow credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify the methods
   allowedHeaders: ['Content-Type', 'Authorization'] // Specify the allowed headers

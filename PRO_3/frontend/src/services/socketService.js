@@ -22,6 +22,12 @@ export const initSocket = (token) => {
   
   socket.on('connect', () => {
     console.log('Socket connected successfully:', socket.id);
+    
+    // Join user's notification room for gamification updates
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    if (userInfo._id) {
+      socket.emit('join_notifications', { userId: userInfo._id });
+    }
   });
   
   socket.on('connect_error', (error) => {
@@ -51,7 +57,7 @@ export const disconnectSocket = () => {
   }
 };
 
-export const joinProblemRoom = (problemId) => {
+export const joinProblemRoom = (problemId, language = null) => {
   const currentSocket = getSocket();
   if (!currentSocket) return;
   
@@ -72,7 +78,8 @@ export const joinProblemRoom = (problemId) => {
   currentSocket.emit('join_problem', { 
     problemId, 
     userId: userInfo._id, 
-    userName: userInfo.name 
+    userName: userInfo.name,
+    language: language // Pass language for gamification tracking
   });
   currentRoom = problemId;
 };
@@ -191,6 +198,28 @@ export const onAcceptanceUpdated = (callback) => {
   if (!currentSocket) return () => {};
   currentSocket.on('acceptance_updated', callback);
   return () => currentSocket.off('acceptance_updated', callback);
+};
+
+// Gamification event listeners
+export const onGamificationUpdate = (callback) => {
+  const currentSocket = getSocket();
+  if (!currentSocket) return () => {};
+  currentSocket.on('gamification_update', callback);
+  return () => currentSocket.off('gamification_update', callback);
+};
+
+export const onPointsUpdated = (callback) => {
+  const currentSocket = getSocket();
+  if (!currentSocket) return () => {};
+  currentSocket.on('points_updated', callback);
+  return () => currentSocket.off('points_updated', callback);
+};
+
+export const onBadgesEarned = (callback) => {
+  const currentSocket = getSocket();
+  if (!currentSocket) return () => {};
+  currentSocket.on('badges_earned', callback);
+  return () => currentSocket.off('badges_earned', callback);
 };
 
 // Notification event listeners

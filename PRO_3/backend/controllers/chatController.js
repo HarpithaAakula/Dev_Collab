@@ -29,7 +29,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   }
 
   const message = await Chat.create({
-    problem: problemId, // Make sure your schema uses `problem`, not `problemId`
+    problem: problemId, 
     user: req.user._id,
     userName: req.user.name,
     content,
